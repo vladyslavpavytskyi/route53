@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Private Route 53 hosted zone with HTTP health check and primary/secondary
+  failover A-records for cmtr-g4y25hc6.
+
+Parameters:
+  ZoneName:
+    Type: String
+    Description: Private hosted zone name (e.g. cmtr-g4y25hc6.internal)
+  AppName:
+    Type: String
+    Description: Application record name (e.g. app)
+  VpcId:
+    Type: String
+    Description: VPC ID of cmtr-g4y25hc6-vpc-primary to associate with the private zone
+  Ec2IpPrimary:
+    Type: String
+    Description: Public IP of the primary EC2 web server
+  Ec2IpSecondary:
+    Type: String
+    Description: Public IP of the secondary EC2 web server
+
+Resources:
+  PrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Ref ZoneName
+      VPCs:
+        - VPCId: !Ref VpcId
+          VPCRegion: !Ref AWS::Region
+      HostedZoneConfig:
+        Comment: !Sub "Private hosted zone for ${AppName}.${ZoneName}"
+
+  PrimaryHealthCheck:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        Type: HTTP
+        IPAddress: !Ref Ec2IpPrimary
+        Port: 80
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+      HealthCheckTags:
+        - Key: Name
+          Value: cmtr-g4y25hc6-primary-hc
+
+  PrimaryRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref PrivateHostedZone
+      Name: !Sub "${AppName}."
+      Type: A
+      TTL: '30'
+      SetIdentifier: Primary
+      Failover: PRIMARY
+      HealthCheckId: !Ref PrimaryHealthCheck
+      ResourceRecords:
+        - !Ref Ec2IpPrimary
+
+  SecondaryRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref PrivateHostedZone
+      Name: !Sub "${AppName}."
+      Type: A
+      TTL: '30'
+      SetIdentifier: Secondary
+      Failover: SECONDARY
+      ResourceRecords:
+        - !Ref Ec2IpSecondary
+
+Outputs:
+  HostedZoneId:
+    Value: !Ref PrivateHostedZone
+  RecordName:
+    Value: !Sub "${AppName}."

@@ -1,0 +1,51 @@
+{
+  "pipeline": {
+    "name": "cmtr-g4y25hc6-pipeline",
+    "roleArn": "PIPELINE_ROLE_ARN",
+    "artifactStore": {
+      "type": "S3",
+      "location": "ARTIFACT_BUCKET"
+    },
+    "stages": [
+      {
+        "name": "Source",
+        "actions": [
+          {
+            "name": "Source",
+            "actionTypeId": {
+              "category": "Source",
+              "owner": "AWS",
+              "provider": "CodeCommit",
+              "version": "1"
+            },
+            "outputArtifacts": [ { "name": "SourceOutput" } ],
+            "configuration": {
+              "RepositoryName": "cmtr-g4y25hc6-repo",
+              "BranchName": "main",
+              "PollForSourceChanges": "true"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Build",
+        "actions": [
+          {
+            "name": "Build",
+            "actionTypeId": {
+              "category": "Build",
+              "owner": "AWS",
+              "provider": "CodeBuild",
+              "version": "1"
+            },
+            "inputArtifacts": [ { "name": "SourceOutput" } ],
+            "outputArtifacts": [ { "name": "BuildOutput" } ],
+            "configuration": {
+              "ProjectName": "cmtr-g4y25hc6-codebuild"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

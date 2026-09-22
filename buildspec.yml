@@ -1,0 +1,43 @@
+version: 0.2
+
+env:
+  variables:
+    PRIMARY_REGION: "eu-west-1"
+    SECONDARY_REGION: "ap-south-1"
+    PARAM_PREFIX: "/cmtr-g4y25hc6"
+    STACK_NAME: "cmtr-g4y25hc6-r53-stack"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+
+  pre_build:
+    commands:
+      - echo "Fetching SSM parameters..."
+      - export ZONE_NAME=$(aws ssm get-parameter --name "$PARAM_PREFIX/zone_name" --region "$PRIMARY_REGION" --query "Parameter.Value" --output text)
+      - export APP_NAME=$(aws ssm get-parameter --name "$PARAM_PREFIX/app_name" --region "$PRIMARY_REGION" --query "Parameter.Value" --output text)
+      - export EC2_IP_PRIMARY=$(aws ssm get-parameter --name "$PARAM_PREFIX/ec2_ip_primary" --region "$PRIMARY_REGION" --query "Parameter.Value" --output text)
+      - export EC2_IP_SECONDARY=$(aws ssm get-parameter --name "$PARAM_PREFIX/ec2_ip_secondary" --region "$SECONDARY_REGION" --query "Parameter.Value" --output text)
+      - export VPC_ID=$(aws ec2 describe-vpcs --region "$PRIMARY_REGION" --filters "Name=tag:Name,Values=cmtr-g4y25hc6-vpc-primary" --query "Vpcs[0].VpcId" --output text)
+      - echo "ZoneName=$ZONE_NAME AppName=$APP_NAME VpcId=$VPC_ID PrimaryIP=$EC2_IP_PRIMARY SecondaryIP=$EC2_IP_SECONDARY"
+
+  build:
+    commands:
+      - echo "Deploying CloudFormation stack $STACK_NAME..."
+      - >
+        aws cloudformation deploy
+        --region "$PRIMARY_REGION"
+        --stack-name "$STACK_NAME"
+        --template-file template.yml
+        --parameter-overrides
+        ZoneName="$ZONE_NAME"
+        AppName="$APP_NAME"
+        VpcId="$VPC_ID"
+        Ec2IpPrimary="$EC2_IP_PRIMARY"
+        Ec2IpSecondary="$EC2_IP_SECONDARY"
+        --no-fail-on-empty-changeset
+
+  post_build:
+    commands:
+      - aws cloudformation describe-stacks --region "$PRIMARY_REGION" --stack-name "$STACK_NAME" --query "Stacks[0].StackStatus" --output text

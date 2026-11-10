@@ -24,8 +24,6 @@ route53/
 
 ## Run
 ```bash
-cd /home/rise/epamAWS/route53
-chmod +x setup.sh
 ./setup.sh
 ```
 

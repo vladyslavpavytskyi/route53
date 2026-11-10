@@ -19,8 +19,6 @@ route53/
 - AWS CLI v2 configured with credentials that can create IAM roles, CodeCommit,
   CodeBuild, CodePipeline, S3 and Route 53 resources.
 - `git` installed.
-- Your CLI's default region doesn't matter — the script pins `eu-west-1` as
-  primary and `ap-south-1` as secondary internally.
 
 ## Run
 ```bash
@@ -41,7 +39,7 @@ CodeBuild's `buildspec.yml` then reads the four SSM parameters
 from `ap-south-1`), looks up the primary VPC ID by tag, and runs
 `aws cloudformation deploy` to create `cmtr-g4y25hc6-r53-stack`.
 
-## Verify
+## Verifing
 ```bash
 aws codepipeline get-pipeline-state --name cmtr-g4y25hc6-pipeline --region eu-west-1
 aws cloudformation describe-stacks --stack-name cmtr-g4y25hc6-r53-stack --region eu-west-1 --query 'Stacks[0].StackStatus'
@@ -52,9 +50,3 @@ Then, from the SSM Session Manager shell on `cmtr-g4y25hc6-ec2-test`:
 dig +short app.cmtr-g4y25hc6.internal
 # Expected: the primary EC2's public IP (ec2_ip_primary)
 ```
-
-## Re-running after a template change
-Just edit `template.yml`, commit and push to `main` on the CodeCommit repo
-(clone URL: `https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/cmtr-g4y25hc6-repo`,
-using `aws codecommit credential-helper` for auth) — the pipeline will pick it
-up automatically (polling) and redeploy the stack.
